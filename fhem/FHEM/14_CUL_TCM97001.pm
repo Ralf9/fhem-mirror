@@ -31,7 +31,7 @@
 # Free Software Foundation, Inc., 
 # 51 Franklin St, Fifth Floor, Boston, MA 02110, USA
 #
-# $Id: 14_CUL_TCM97001.pm 18358 2019-06-23 09:00:05Z Ralf9 $
+# $Id: 14_CUL_TCM97001.pm 18358 2019-06-23 19:00:05Z Ralf9 $
 #
 #
 # 14.06.2017 W155(TCM21...) wind/rain    pejonp
@@ -381,7 +381,8 @@ CUL_TCM97001_Parse($$)
     $name = $def->{NAME};
   }
 
-  my $readedModel = AttrVal($name, "model", "Unknown");
+  #my $readedModel = AttrVal($name, "model", "Unknown");	# wird nicht verwendet
+  my $readedModel;
   
   my $syncTimeIndex = rindex($msg,";");
   my @syncBit;
@@ -403,13 +404,11 @@ CUL_TCM97001_Parse($$)
   {
 	$rssi = hex($rssi);
     $rssi = ($rssi>=128 ? (($rssi-256)/2-74) : ($rssi/2-74)) if defined($rssi);
-    Log3 $name, 4, "$iodev: CUL_TCM97001 $name $id3 ($msg) length: $l RSSI: $rssi";
+    Log3 $hash, 4, "$iodev: CUL_TCM97001 $name $id3 ($msg) length: $l RSSI: $rssi";
   } else {
-    Log3 $name, 4, "$iodev: CUL_TCM97001 $name $id3 ($msg) length: $l"; 
+    Log3 $hash, 4, "$iodev: CUL_TCM97001 $name $id3 ($msg) length: $l"; 
   }
 
-  my ($msgtype, $msgtypeH);
-  
   my $packageOK = FALSE;
   
   my $batbit=undef;
@@ -1609,10 +1608,9 @@ CUL_TCM97001_Parse($$)
     readingsBeginUpdate($def);
     my ($val, $valH, $state);
     
-	if (defined($temp)) {
-    $msgtype = "temperature";
-    $val = sprintf("%2.1f", ($temp) );
-    $state="T: $val";
+    if (defined($temp)) {
+      $val = sprintf("%2.1f", ($temp) );
+      $state="T: $val";
 #    if ($hashumidity == TRUE) {
 #      if ($model eq "Prologue") {
 #         # plausibility check 
@@ -1631,7 +1629,6 @@ CUL_TCM97001_Parse($$)
       $rainSumDay=ReadingsVal($name, "RainD", $rainSumDay);
       $rainSumHour=ReadingsVal($name, "RainH", $rainSumHour);
       
-      $msgtype = "temperature";
       $val = sprintf("%2.1f", ($temp) );
       $state="T: $val";
       Log3 $name, 5, "$iodev: CUL_TCM97001 1. $lastDay : $lastHour : $rainSumDay : $rainSumHour";
@@ -1656,7 +1653,7 @@ CUL_TCM97001_Parse($$)
       
       Log3 $name, 5, "$iodev: CUL_TCM97001 2. $lastDay : $lastHour : $rainSumDay : $rainSumHour";
       $state="$state RainH: $rainSumHour RainD: $rainSumDay R: $rainticks Rmm: $rainMM";
-      Log3 $name, 5, "$iodev: CUL_TCM97001 $msgtype $name $id3 state: $state"; 
+      Log3 $name, 5, "$iodev: CUL_TCM97001 $name $id3 state: $state"; 
    }
       #zusätzlich Daten für Wetterstation
     if ($hasrain == TRUE) {
@@ -1684,16 +1681,15 @@ CUL_TCM97001_Parse($$)
           readingsBulkUpdate($def, "windSpeed", $windSpeed );
           $state = "Ws: $windSpeed ";
           $haswindspeed = FALSE;
-     }
+    }
+    my $logtext = "";
+    if (defined($temp)) {
+      $logtext .= " T: $val";
+    }
     if ($hashumidity == TRUE) {
-      $msgtypeH = "humidity";
       $valH = $humidity;
-      $state="$state H: $valH";
-      Log3 $name, 4, "$iodev: CUL_TCM97001 $msgtype $name $id3 T: $val H: $valH"; 
-     } else {
-      $msgtype = "other";
-      Log3 $name, 4, "$iodev: CUL_TCM97001 $msgtype $name $id3";
-      #Log3 $name, 4, "CUL_TCM97001 $msgtype $name $id3 ";
+      $state .= " H: $valH";
+      $logtext .= " H: $valH";
     }
     if($hastrend) {
       my $readTrend = ReadingsVal($name, "trend", "unknown");
@@ -1705,10 +1701,11 @@ CUL_TCM97001_Parse($$)
     }
     if ($hasbatcheck) {
       my $battery = ReadingsVal($name, "battery", "unknown");
-      if ($batbit) {
-        if ($battery ne  "ok") { readingsBulkUpdate($def, "battery", "ok"); }
-      } else {
-        if ($battery ne  "low") { readingsBulkUpdate($def, "battery", "low"); }
+      my $bat = $batbit eq "1" ? "ok" : "low";
+      $logtext .= " Bat: $bat";
+      if ($bat ne $battery) {
+         readingsBulkUpdate($def, "battery", $bat);
+         readingsBulkUpdate($def, "batteryState", $bat);
       }
       $hasbatcheck = FALSE;
     }
@@ -1722,8 +1719,12 @@ CUL_TCM97001_Parse($$)
       $hasmode = FALSE;
     }
     if ($haschannel) {
+      $logtext .= " CH: $channel";
       my $readChannel = ReadingsVal($name, "channel", "");
       if (defined($readChannel) && $readChannel ne $channel) { readingsBulkUpdate($def, "channel", $channel); }
+    }
+    if ($logtext ne "") {
+      Log3 $hash, 4, "$iodev: CUL_TCM97001 $name ID: $id3$logtext";
     }
 #    if ($model eq "Prologue" || $model eq "Eurochron") {
 #         # plausibility check 
@@ -1732,12 +1733,13 @@ CUL_TCM97001_Parse($$)
 #            readingsBulkUpdate($def, $msgtype, $val);
 #         }
 #    } else { 
-        readingsBulkUpdate($def, $msgtype, $val);
-#    }
-    if ($hashumidity == TRUE) {
-      readingsBulkUpdate($def, $msgtypeH, $valH);
+    if (defined($temp)) {
+       readingsBulkUpdate($def, "temperature", $val);
     }
-    
+    if ($hashumidity == TRUE) {
+       readingsBulkUpdate($def, "humidity", $valH);
+    }
+
     readingsBulkUpdate($def, "state", $state);
     # for testing only
     #my $rawlen = length($msg);
@@ -1749,8 +1751,6 @@ CUL_TCM97001_Parse($$)
       $def->{RSSI} = $rssi;
     } 
     $attr{$name}{model} = $model;
-
-
 
     return $name;
   } else {
