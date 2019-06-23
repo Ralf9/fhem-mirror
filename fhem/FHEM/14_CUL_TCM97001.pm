@@ -31,7 +31,7 @@
 # Free Software Foundation, Inc., 
 # 51 Franklin St, Fifth Floor, Boston, MA 02110, USA
 #
-# $Id$
+# $Id: 14_CUL_TCM97001.pm 18358 2019-06-23 09:00:05Z Ralf9 $
 #
 #
 # 14.06.2017 W155(TCM21...) wind/rain    pejonp
@@ -933,7 +933,7 @@ CUL_TCM97001_Parse($$)
 		}
     
 ### inserted by pejonp 3.2.2018 Ventus W132/W044    
-   if (checksum_W155($msg) == TRUE && ($readedModel eq "Unknown" || $readedModel eq "W044" || $readedModel eq "W132")) { 
+   if (checksum_W155($msg) == TRUE && ($readedModel eq "Unknown" || $readedModel eq "TCM21...." || $readedModel eq "W044" || $readedModel eq "W132")) {
         # Long with tmp
         # All nibbles must be reversed  
         # e.g. 154E800480	   0001	0101 0100 1110 1000	0000 0000 0100 1000	0000
@@ -1001,7 +1001,11 @@ CUL_TCM97001_Parse($$)
         }
         $humidity = hex($aReverse[7]).hex($aReverse[6]);
         $hashumidity = TRUE; 
-        $model="W044";  
+        if ($readedModel eq "Unknown") {
+           $model="W044";
+        } else {
+           $model=$readedModel;
+        }
         Log3 $hash,5, "$iodev: CUL_TCM97001_02: $model CH:$channel Bat:$batbit Mode:$mode T:$temp H:$humidity ";
         $packageOK = TRUE;
         } else {
