@@ -672,7 +672,7 @@ CUL_TCM97001_Parse($$)
 		}
 		$readedModel = AttrVal($name, "model", "Unknown");
 		
-	if (($readedModel eq "AURIOL" || $readedModel eq "Unknown")&& (length($msg) == 10)) {
+	if ($readedModel eq "AURIOL" || $readedModel eq "Unknown") {
 		  # Implementation from Femduino
 		  # AURIOL (Lidl Version: 09/2013)
 		  #                /--------------------------------- Channel, changes after every battery change      
@@ -1416,7 +1416,7 @@ CUL_TCM97001_Parse($$)
         }
 
         $hasbatcheck = TRUE;
-        $hastrend = TRUE;     
+        $hastrend = FALSE; # PFR_130 has no trend
         $packageOK = TRUE;
         $hasmode = TRUE;
         
@@ -1426,9 +1426,10 @@ CUL_TCM97001_Parse($$)
       }
     }
 
-    if ( (isRain($msg)!=TRUE) && ($readedModel eq "Unknown") && ($readedModel ne "PFR_130") && length($msg) == 10) {
+    #if ( (isRain($msg)!=TRUE) && ($readedModel eq "Unknown") && ($readedModel ne "PFR_130") && length($msg) == 10) {
+    if (($readedModel eq "AURIOL" || $readedModel eq "Unknown")) {
       # Implementation from Femduino
-      # AURIOL (Lidl Version: 09/2013)
+      # AURIOL (Lidl Version: 09/2013), Z31743B IAN 91838
       #                /--------------------------------- Channel, changes after every battery change      
       #               /           / ------------------------ Battery state 1 == Ok      
       #              /           / /------------------------ Battery changed, Sync startet      
@@ -1639,11 +1640,13 @@ CUL_TCM97001_Parse($$)
       }else {
          #new day, start over
          $rainSumDay=$rainMM;
+         $lastDay=$mday; #set new lastDay (Patch von hjgode)
       } 
       if($hour==$lastHour){
          $rainSumHour+=$rainMM;
       }else{
-	 $rainSumHour=$rainMM;
+         $rainSumHour=$rainMM;
+         $lastHour=$hour; # set new lastHour (Patch von hjgode)
       }
       
       readingsBulkUpdate($def, "lastDay", $lastDay );
