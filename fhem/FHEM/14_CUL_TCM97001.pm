@@ -932,7 +932,7 @@ CUL_TCM97001_Parse($$)
 			}
 		}
     
-### inserted by pejonp 3.2.2018 Ventus W132/W044    
+### inserted by pejonp 3.2.2018 Ventus W132/W044
    if (checksum_W155($msg) == TRUE && ($readedModel eq "Unknown" || $readedModel eq "TCM21...." || $readedModel eq "W044" || $readedModel eq "W132")) {
         # Long with tmp
         # All nibbles must be reversed  
@@ -942,23 +942,23 @@ CUL_TCM97001_Parse($$)
         # C Bit 1 Battery
         # D+E+F Temp 
         # G+H Hum
-        # I CRC    
-      	#/* Documentation also at http://www.tfd.hu/tfdhu/files/wsprotocol/auriol_protocol_v20.pdf
-      	# * Message Format: (9 nibbles, 36 bits):
-	      # * Please note that bytes need to be reversed before processing!
-      	# *
-      	# * Format for Temperature Humidity
-      	# *   AAAAAAAA BBBB CCCC CCCC CCCC DDDDDDDD EEEE
+        # I CRC
+        #/* Documentation also at http://www.tfd.hu/tfdhu/files/wsprotocol/auriol_protocol_v20.pdf
+        # * Message Format: (9 nibbles, 36 bits):
+        # * Please note that bytes need to be reversed before processing!
+        # *
+        # * Format for Temperature Humidity
+        # *   AAAAAAAA BBBB CCCC CCCC CCCC DDDDDDDD EEEE
         # *   RC       Type Temperature___ Humidity Checksum
-      	# *   A = Rolling Code / Device ID
-      	# *       Device ID: AAAABBAA BB is used for channel, base channel is 01
-      	# *       When channel selector is used, channel can be 10 (2) and 11 (3)
-      	# *   B = Message type (xyyz = temp/humidity if yy <> '11') else wind/rain sensor
-      	# *       x indicates battery status (0 normal, 1 voltage is below ~2.6 V)
-      	# *       z 0 indicates regular transmission, 1 indicates requested by pushbutton
-      	# *   C = Temperature (two's complement)
-      	# *   D = Humidity BCD format
-      	# *   E = Checksum
+        # *   A = Rolling Code / Device ID
+        # *       Device ID: AAAABBAA BB is used for channel, base channel is 01
+        # *       When channel selector is used, channel can be 10 (2) and 11 (3)
+        # *   B = Message type (xyyz = temp/humidity if yy <> '11') else wind/rain sensor
+        # *       x indicates battery status (0 normal, 1 voltage is below ~2.6 V)
+        # *       z 0 indicates regular transmission, 1 indicates requested by pushbutton
+        # *   C = Temperature (two's complement)
+        # *   D = Humidity BCD format
+        # *   E = Checksum
 
         my @a = split("", $msg);
         my $bitReverse = "";
@@ -967,11 +967,11 @@ CUL_TCM97001_Parse($$)
         my $bin3;
         my $hlen = length($msg);
         my $blen = $hlen * 4;
-        my $bitData = unpack("B$blen", pack("H$hlen", $msg)); 
-              
+        my $bitData = unpack("B$blen", pack("H$hlen", $msg));
+        
         foreach $x (@a) {
            $bin3=sprintf("%024b",hex($x));
-           $bitReverse = $bitReverse . substr(reverse($bin3),0,4); 
+           $bitReverse = $bitReverse . substr(reverse($bin3),0,4);
            $bitUnreverse = $bitUnreverse . sprintf( "%b", hex( substr($bin3,0,4) ) );
         }
         my $hexReverse = uc(unpack("H*", pack ("B*", $bitReverse)));
@@ -984,78 +984,78 @@ CUL_TCM97001_Parse($$)
         $channel = oct("0b".substr( $bitData,4,2));
         $haschannel = TRUE;
         $batbit =  substr($bitData,8,1);
-        $batbit = $batbit ? 0 : 1; # Bat bit umdrehen                       
+        $batbit = $batbit ? 0 : 1; # Bat bit umdrehen
         $hasbatcheck = TRUE;  
         # Temp/Hum 
         if ( $msgt ne "11") {
             $mode =  substr($bitData,11,1);
             $hasmode = TRUE;
-       if (hex($aReverse[5]) > 3) {
-          # negative temp
-           $temp = ((hex($aReverse[3]) + hex($aReverse[4]) * 16 + hex($aReverse[5]) * 256));
-           $temp = (~$temp & 0x03FF) + 1;
-           $temp = -$temp/10;
+            if (hex($aReverse[5]) > 3) {
+               # negative temp
+                $temp = ((hex($aReverse[3]) + hex($aReverse[4]) * 16 + hex($aReverse[5]) * 256));
+                $temp = (~$temp & 0x03FF) + 1;
+                $temp = -$temp/10;
+             } else {
+                # positive temp
+                $temp = (hex($aReverse[3]) + hex($aReverse[4]) * 16 + hex($aReverse[5]) * 256)/10;
+             }
+             $humidity = hex($aReverse[7]).hex($aReverse[6]);
+             $hashumidity = TRUE;
+             if ($readedModel eq "Unknown") {
+                $model="W044";
+             } else {
+                $model=$readedModel;
+             }
+                Log3 $hash,4, "$iodev: CUL_TCM97001_02: $model CH:$channel Bat:$batbit Mode:$mode T:$temp H:$humidity ";
+                $packageOK = TRUE;
         } else {
-           # positive temp
-           $temp = (hex($aReverse[3]) + hex($aReverse[4]) * 16 + hex($aReverse[5]) * 256)/10;
-        }
-        $humidity = hex($aReverse[7]).hex($aReverse[6]);
-        $hashumidity = TRUE; 
-        if ($readedModel eq "Unknown") {
-           $model="W044";
-        } else {
-           $model=$readedModel;
-        }
-        Log3 $hash,5, "$iodev: CUL_TCM97001_02: $model CH:$channel Bat:$batbit Mode:$mode T:$temp H:$humidity ";
-        $packageOK = TRUE;
-        } else {
-        # Wind/Rain/Guest   
-        #   C = Fixed to 1000 0000 0000  Reverse 0001 0000 0000
-        # * Format for Windspeed
-	      # *   AAAAAAAA BBBB CCCC CCCC CCCC DDDDDDDD EEEE
-	      # *   RC       Type                Windspd  Checksum
-	      # *   A = Rolling Code
-	      # *   B = Message type (xyyx = NON temp/humidity data if yy = '11')
-	      # *   C = Fixed to 1000 0000 0000   (8)
-	      # *   D = Windspeed  (bitvalue * 0.2 m/s, correction for webapp = 3600/1000 * 0.2 * 100 = 72)
-	      # *   E = Checksum
+          # Wind/Rain/Guest
+          #   C = Fixed to 1000 0000 0000  Reverse 0001 0000 0000
+          # * Format for Windspeed
+          # *   AAAAAAAA BBBB CCCC CCCC CCCC DDDDDDDD EEEE
+          # *   RC       Type                Windspd  Checksum
+          # *   A = Rolling Code
+          # *   B = Message type (xyyx = NON temp/humidity data if yy = '11')
+          # *   C = Fixed to 1000 0000 0000   (8)
+          # *   D = Windspeed  (bitvalue * 0.2 m/s, correction for webapp = 3600/1000 * 0.2 * 100 = 72)
+          # *   E = Checksum
           if ((hex($a[3])== 0x8) && (hex($a[4])== 0x0)&& (hex($a[5])== 0x0)) { # Windspeed
               $windSpeed = (hex($aReverse[6]) + hex($aReverse[7])) * 0.2;
               $haswindspeed = TRUE;
               $model="W132";
-              Log3 $hash,5, "$iodev: CUL_TCM97001_03:  $model  windSpeed: $windSpeed aR: $aReverse[6] $aReverse[7]";
-             }
-        # * Format for Winddirection & Windgust
-      	# *   AAAAAAAA BBBB CCCD DDDD DDDD EEEEEEEE FFFF
-      	# *   RC       Type      Winddir   Windgust Checksum
-      	# *   A = Rolling Code
-      	# *   B = Message type (xyyx = NON temp/humidity data if yy = '11')
-      	# *   C = Fixed to 111  (E)
-      	# *   D = Wind direction
-      	# *   E = Windgust (bitvalue * 0.2 m/s, correction for webapp = 3600/1000 * 0.2 * 100 = 72)
-      	# *   F = Checksum 
-            if ((hex($amsg[3])== 0xE)|| (hex($amsg[3])== 0xF)) { # Windguest 
+              Log3 $hash,4, "$iodev: CUL_TCM97001_03:  $model  windSpeed: $windSpeed aR: $aReverse[6] $aReverse[7]";
+          }
+          # * Format for Winddirection & Windgust
+          # *   AAAAAAAA BBBB CCCD DDDD DDDD EEEEEEEE FFFF
+          # *   RC       Type      Winddir   Windgust Checksum
+          # *   A = Rolling Code
+          # *   B = Message type (xyyx = NON temp/humidity data if yy = '11')
+          # *   C = Fixed to 111  (E)
+          # *   D = Wind direction
+          # *   E = Windgust (bitvalue * 0.2 m/s, correction for webapp = 3600/1000 * 0.2 * 100 = 72)
+          # *   F = Checksum 
+            if ((hex($amsg[3])== 0xE)|| (hex($amsg[3])== 0xF)) { # Windguest
               $windGuest = (hex($aReverse[6]) + hex($aReverse[7])) * 0.2;
               $windDirection =  (hex($a[5]) >> 1) | (hex($a[4]) & 0x1);
               $windDirectionText = $winddir_name[$windDirection];
               $haswind = TRUE;
               $model="W132";
               Log3 $hash,4, "$iodev: CUL_TCM97001_04: $model windGuest: $windGuest aR: $aReverse[6] $aReverse[7]  winddir:$windDirection aR:$aReverse[4] $aReverse[5] txt:$windDirectionText";
-             }
-  # * Format for Rain
-	# *   AAAAAAAA BBBB CCCC DDDD DDDD DDDD DDDD EEEE
-	# *   RC       Type      Rain                Checksum
-	# *   A = Rolling Code /Device ID
-	# *   B = Message type (xyyx = NON temp/humidity data if yy = '11')
-	# *   C = fixed to 1100   (C)
-	# *   D = Rain (bitvalue * 0.25 mm)
-	# *   E = Checksum          
+            }
+          # * Format for Rain
+          # *   AAAAAAAA BBBB CCCC DDDD DDDD DDDD DDDD EEEE
+          # *   RC       Type      Rain                Checksum
+          # *   A = Rolling Code /Device ID
+          # *   B = Message type (xyyx = NON temp/humidity data if yy = '11')
+          # *   C = fixed to 1100   (C)
+          # *   D = Rain (bitvalue * 0.25 mm)
+          # *   E = Checksum          
           if ((hex($amsg[3])== 0xC)) { # Rain
               $rain = (hex($amsg[4]) + hex($amsg[5]) + hex($amsg[6]) + hex($amsg[7])) * 0.25;
               $hasrain = TRUE;
               $model="W174";
               Log3 $hash,4, "$iodev: CUL_TCM97001_05: $model rain: $rain ";
-             }      
+          }
         }
     if ( checkValues($temp, $hashumidity) || $haswindspeed ||$haswind || $hasrain || $haschannel || $hasbatcheck ) {
       my $deviceCode;
