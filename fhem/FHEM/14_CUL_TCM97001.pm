@@ -31,7 +31,7 @@
 # Free Software Foundation, Inc., 
 # 51 Franklin St, Fifth Floor, Boston, MA 02110, USA
 #
-# $Id: 14_CUL_TCM97001.pm 18358 2019-06-23 19:00:05Z Ralf9 $
+# $Id: 14_CUL_TCM97001.pm 18358 2019-07-01 23:00:00Z Ralf9 $
 #
 #
 # 14.06.2017 W155(TCM21...) wind/rain    pejonp
@@ -494,7 +494,7 @@ CUL_TCM97001_Parse($$)
         my $deviceCode;
         if (!defined($modules{CUL_TCM97001}{defptr}{$tcm97id}))
         {
-            if ( $enableLongIDs == TRUE || (($longids != "0") && ($longids eq "1" || $longids eq "ALL" || (",$longids," =~ m/,$model,/))))
+            if ( $enableLongIDs == TRUE || (($longids ne "0") && ($longids eq "1" || $longids eq "ALL" || (",$longids," =~ m/,$model,/))))
           	{
 		         $deviceCode="CUL_TCM97001_".$tcm97id;
 		         Log3 $hash,4, "$iodev: CUL_TCM97001 using longid: $longids model: $model";
@@ -551,7 +551,7 @@ CUL_TCM97001_Parse($$)
         my $deviceCode;
         if (!defined($modules{CUL_TCM97001}{defptr}{$tcm97id}))
         {
-            if ( $enableLongIDs == TRUE || (($longids != "0") && ($longids eq "1" || $longids eq "ALL" || (",$longids," =~ m/,$model,/))))
+            if ( $enableLongIDs == TRUE || (($longids ne "0") && ($longids eq "1" || $longids eq "ALL" || (",$longids," =~ m/,$model,/))))
           	{
 		         $deviceCode="CUL_TCM97001_".$tcm97id;
 		         Log3 $hash,4, "$iodev: CUL_TCM97001 using longid: $longids model: $model";
@@ -620,7 +620,7 @@ CUL_TCM97001_Parse($$)
      
          	if (!defined($modules{CUL_TCM97001}{defptr}{$idType2}))
          	{	
-	          	if ( $enableLongIDs == TRUE || (($longids != "0") && ($longids eq "1" || $longids eq "ALL" || (",$longids," =~ m/,$model,/))))
+	          	if ( $enableLongIDs == TRUE || (($longids ne "0") && ($longids eq "1" || $longids eq "ALL" || (",$longids," =~ m/,$model,/))))
 	          	{
 			         $deviceCode="CUL_TCM97001_".$idType2;
 			         Log3 $hash,4, "$iodev: CUL_TCM97001 using longid: $longids model: $model";
@@ -708,7 +708,7 @@ CUL_TCM97001_Parse($$)
 			
 			if ($deviceCode ne $idType1)  # new naming convention
 			{	
-				if ( $enableLongIDs == TRUE || (($longids != "0") && ($longids eq "1" || $longids eq "ALL" || (",$longids," =~ m/,$model,/))))
+				if ( $enableLongIDs == TRUE || (($longids ne "0") && ($longids eq "1" || $longids eq "ALL" || (",$longids," =~ m/,$model,/))))
 				{
 					 $deviceCode="CUL_TCM97001_".$idType1;
 				} else {
@@ -817,7 +817,7 @@ CUL_TCM97001_Parse($$)
         
         if ($deviceCode ne $idType1)  # new naming convention
      	{	
-     	    if ( $enableLongIDs == TRUE || (($longids != "0") && ($longids eq "1" || $longids eq "ALL" || (",$longids," =~ m/,$model,/))))
+     	    if ( $enableLongIDs == TRUE || (($longids ne "0") && ($longids eq "1" || $longids eq "ALL" || (",$longids," =~ m/,$model,/))))
           	{
 		         Log3 $hash,4, "$iodev: CUL_TCM97001 using longid: $longids model: $model";
            	} else {
@@ -1060,7 +1060,7 @@ CUL_TCM97001_Parse($$)
       my $deviceCode;
      	if (!defined($modules{CUL_TCM97001}{defptr}{$idType1}))
      	{	
-          if ( $enableLongIDs == TRUE || (($longids != "0") && ($longids eq "1" || $longids eq "ALL" || (",$longids," =~ m/,$model,/))))
+          if ( $enableLongIDs == TRUE || (($longids ne "0") && ($longids eq "1" || $longids eq "ALL" || (",$longids," =~ m/,$model,/))))
           	{
 	             $deviceCode="CUL_TCM97001_".$idType1;
 	             Log3 $hash,4, "$iodev: CUL_TCM97001_06: model: $model  $deviceCode";
@@ -1134,7 +1134,7 @@ CUL_TCM97001_Parse($$)
       
         if ($deviceCode ne $idType1)  # new naming convention
      	{	
-	      	if ( $enableLongIDs == TRUE || (($longids != "0") && ($longids eq "1" || $longids eq "ALL" || (",$longids," =~ m/,$model,/))))
+	      	if ( $enableLongIDs == TRUE || (($longids ne "0") && ($longids eq "1" || $longids eq "ALL" || (",$longids," =~ m/,$model,/))))
           	{
 	             Log3 $hash,4, "$iodev: CUL_TCM97001 using longid: $longids model: $model";
            	} else {
@@ -1202,7 +1202,7 @@ CUL_TCM97001_Parse($$)
             
             if ($deviceCode ne $idType1)  # new naming convention
          	{	
-		      	if ( $enableLongIDs == TRUE || (($longids != "0") && ($longids eq "1" || $longids eq "ALL" || (",$longids," =~ m/,$model,/))))
+		      	if ( $enableLongIDs == TRUE || (($longids ne "0") && ($longids eq "1" || $longids eq "ALL" || (",$longids," =~ m/,$model,/))))
               	{
 		             Log3 $hash,4, "$iodev: CUL_TCM97001 using longid: $longids model: $model";
                	} else {
@@ -1270,7 +1270,7 @@ CUL_TCM97001_Parse($$)
      
        	if ($deviceCode ne $idType1)  # new naming convention     
      	{	
-		  	if ( $enableLongIDs == TRUE || (($longids != "0") && ($longids eq "1" || $longids eq "ALL" || (",$longids," =~ m/,$model,/))))
+		  	if ( $enableLongIDs == TRUE || (($longids ne "0") && ($longids eq "1" || $longids eq "ALL" || (",$longids," =~ m/,$model,/))))
           	{
 	             Log3 $hash,4, "$iodev: CUL_TCM97001 using longid: $longids model: $model";
            	} else {
@@ -1324,7 +1324,7 @@ CUL_TCM97001_Parse($$)
         
         if ($deviceCode ne $idType1)  # new naming convention
      	{	
-		  	if ( $enableLongIDs == TRUE || (($longids != "0") && ($longids eq "1" || $longids eq "ALL" || (",$longids," =~ m/,$model,/))))
+		  	if ( $enableLongIDs == TRUE || (($longids ne "0") && ($longids eq "1" || $longids eq "ALL" || (",$longids," =~ m/,$model,/))))
           	{
 	             Log3 $hash,4, "$iodev: CUL_TCM97001 using longid: $longids model: $model";
            	} else {
@@ -1391,15 +1391,17 @@ CUL_TCM97001_Parse($$)
         $trend = (hex($a[7]) & 0x3); # in auriol_protocol_v20.pdf there is no trend bit
         $model="PFR_130";
         my $deviceCode;
+        my $pfrId = "";
      
      	if (!defined($modules{CUL_TCM97001}{defptr}{$idType1}))
      	{	
-          if ( $enableLongIDs == TRUE || (($longids != "0") && ($longids eq "1" || $longids eq "ALL" || (",$longids," =~ m/,$model,/))))
+          if ( $enableLongIDs == TRUE || (($longids ne "0") && ($longids eq "1" || $longids eq "ALL" || (",$longids," =~ m/,$model,/))))
           	{
 	             $deviceCode="CUL_TCM97001_".$idType1;
+	             $pfrId = "_" . $idType1;
 	             Log3 $hash,4, "$iodev: CUL_TCM97001 using longid: $longids model: $model";
            	} else {
-	             $deviceCode="CUL_TCM97001_" . $model . "_" . $channel;
+	             $deviceCode="CUL_TCM97001_" . $model; # . "_" . $channel;
            	}
      	}  else  {  # Fallback for already defined devices use old naming convention
      		$deviceCode=$idType1;
@@ -1412,7 +1414,7 @@ CUL_TCM97001_Parse($$)
       	      	
         if(!$def) {
           Log3 $name, 2, "$iodev: CUL_TCM97001 Unknown device $deviceCode, please define it";
-          return "UNDEFINED $model" . substr($deviceCode, rindex($deviceCode,"_")) . " CUL_TCM97001 $deviceCode"; 
+          return "UNDEFINED $model" . $pfrId . " CUL_TCM97001 $deviceCode"; 
         }
 
         $hasbatcheck = TRUE;
@@ -1463,7 +1465,7 @@ CUL_TCM97001_Parse($$)
      
      	if (!defined($modules{CUL_TCM97001}{defptr}{$idType1}))
      	{	
-		  	if ( $enableLongIDs == TRUE || (($longids != "0") && ($longids eq "1" || $longids eq "ALL" || (",$longids," =~ m/,$model,/))))
+		  	if ( $enableLongIDs == TRUE || (($longids ne "0") && ($longids eq "1" || $longids eq "ALL" || (",$longids," =~ m/,$model,/))))
           	{
 	             $deviceCode="CUL_TCM97001_".$idType1;
 	             Log3 $hash,4, "$iodev: CUL_TCM97001 using longid: $longids model: $model";
@@ -1558,7 +1560,7 @@ CUL_TCM97001_Parse($$)
             
             if ($deviceCode ne $idType1)  # new naming convention
          	{	
-		      	if ( $enableLongIDs == TRUE || (($longids != "0") && ($longids eq "1" || $longids eq "ALL" || (",$longids," =~ m/,$model,/))))
+		      	if ( $enableLongIDs == TRUE || (($longids ne "0") && ($longids eq "1" || $longids eq "ALL" || (",$longids," =~ m/,$model,/))))
               	{
 		             Log3 $hash,4, "$iodev: CUL_TCM97001 using longid: $longids model: $model";
                	} else {
