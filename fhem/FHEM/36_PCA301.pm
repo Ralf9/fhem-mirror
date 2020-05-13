@@ -1,7 +1,11 @@
 
-# $Id$
+# $Id: 36_PCA301.pm 12056 2020-02-29 20:00:00Z Ralf9 $
 #
-# TODO:
+# 2016 justme1968
+#
+# 2020 Anpassungen und Erweiterungen von Ralf9
+
+
 
 package main;
 
@@ -9,11 +13,25 @@ use strict;
 use warnings;
 use SetExtensions;
 
-sub PCA301_Parse($$);
-sub PCA301_Send($$@);
+use constant {
+	PCA301_send_OnOffStatus_timeout  => 2,	# Wartezeit bis ein sendRetry gemacht wird
+	PCA301_send_max_cmdRetry   => 4
+};
+
+#sub PCA301_Parse($$);
+#sub PCA301_Send($$@);
+
+my %cmdtxt = (
+	"50" => 'off',
+	"51" => 'on',
+	"40" => 'statreq',
+	"41" => 'reset',
+	"60" => 'identify',
+	"170" => 'pairing'
+	);
 
 sub
-PCA301_Initialize($)
+PCA301_Initialize
 {
   my ($hash) = @_;
 
@@ -30,11 +48,12 @@ PCA301_Initialize($)
                        ." readonly:1,0"
                        ." forceOn:1,0"
                        ." offLevel"
+                       ." pollStatus"
                        ." $readingFnAttributes";
 }
 
 sub
-PCA301_Define($$)
+PCA301_Define
 {
   my ($hash, $def) = @_;
   my @a = split("[ \t][ \t]*", $def);
@@ -79,12 +98,12 @@ PCA301_Define($$)
 
   #PCA301_Send($hash, $addr, "00" );
 
-  return undef;
+  return;
 }
 
 #####################################
 sub
-PCA301_Undef($$)
+PCA301_Undef
 {
   my ($hash, $arg) = @_;
   my $name = $hash->{NAME};
@@ -92,12 +111,14 @@ PCA301_Undef($$)
 
   delete( $modules{PCA301}{defptr}{$addr} );
 
-  return undef;
+  return;
 }
 
 #####################################
+### command: 0x04=measure data, 0x05=switch device, 0x06=device LED, 0x11=pairing
+#####################################
 sub
-PCA301_Set($@)
+PCA301_Set
 {
   my ($hash, $name, @aa) = @_;
 
@@ -113,7 +134,8 @@ PCA301_Set($@)
   my $readonly = AttrVal($name, "readonly", "0" );
 
   my $list = "identify:noArg reset:noArg statusRequest:noArg";
-  $list .= " off:noArg on:noArg toggle:noArg" if( !$readonly );
+  #$list .= " CmdData"  if( !$readonly );	# nur fuer Test und Debug zwecke
+  $list .= " off:noArg on:noArg toggle:noArg pairing:noArg" if( !$readonly );
 
   if( $cmd eq 'toggle' ) {
     $cmd = ReadingsVal($name,"state","on") eq "off" ? "on" :"off";
@@ -122,27 +144,37 @@ PCA301_Set($@)
   if( !$readonly && $cmd eq 'off' ) {
     readingsSingleUpdate($hash, "state", "set-$cmd", 1);
     PCA301_Send( $hash, 0x05, 0x00 );
+    $hash->{cmd} = '50';
+    InternalTimer(gettimeofday()+PCA301_send_OnOffStatus_timeout, "PCA301_SendRetry", $hash, 0);
   } elsif( !$readonly && $cmd eq 'on' ) {
     readingsSingleUpdate($hash, "state", "set-$cmd", 1);
     PCA301_Send( $hash, 0x05, 0x01 );
+    $hash->{cmd} = '51';
+    InternalTimer(gettimeofday()+PCA301_send_OnOffStatus_timeout, "PCA301_SendRetry", $hash, 0);
   } elsif( $cmd eq 'statusRequest' ) {
     readingsSingleUpdate($hash, "state", "set-$cmd", 1);
     PCA301_Send( $hash, 0x04, 0x00 );
+    $hash->{cmd} = '40';
+    InternalTimer(gettimeofday()+PCA301_send_OnOffStatus_timeout, "PCA301_SendRetry", $hash, 0);
   } elsif( $cmd eq 'reset' ) {
     readingsSingleUpdate($hash, "state", "set-$cmd", 1);
     PCA301_Send( $hash, 0x04, 0x01 );
   } elsif( $cmd eq 'identify' ) {
     PCA301_Send( $hash, 0x06, 0x00 );
+  } elsif( !$readonly && $cmd eq 'pairing' ) {
+    PCA301_Send( $hash, 0x11, 0x00 );
+  } elsif( !$readonly && $cmd eq 'CmdData' ) {	# nur fuer Test und Debug zwecke
+    PCA301_Send( $hash, $arg, $arg2 );
   } else {
     return SetExtensions($hash, $list, $name, @aa);
   }
 
-  return undef;
+  return;
 }
 
 #####################################
 sub
-PCA301_Get($@)
+PCA301_Get
 {
   my ($hash, $name, $cmd, @args) = @_;
 
@@ -154,7 +186,7 @@ PCA301_Get($@)
 }
 
 sub
-PCA301_Fingerprint($$)
+PCA301_Fingerprint
 {
   my ($name, $msg) = @_;
 
@@ -162,7 +194,7 @@ PCA301_Fingerprint($$)
 }
 
 sub
-PCA301_ForceOn($)
+PCA301_ForceOn
 {
   my ($hash) = @_;
 
@@ -170,7 +202,51 @@ PCA301_ForceOn($)
 }
 
 sub
-PCA301_Parse($$)
+PCA301_Poll_statusRequest
+{
+  my ($param) = @_;
+  my (undef,$name) = split(':', $param);
+  my $hash = $defs{$name};
+  
+  readingsSingleUpdate($hash, "state", "set-statusRequest", 1);
+  PCA301_Send( $hash, 0x04, 0x00 );
+  $hash->{cmd} = '40';
+  InternalTimer(gettimeofday()+PCA301_send_OnOffStatus_timeout, "PCA301_SendRetry", $hash, 0);
+  my $poll = AttrVal($name, "pollStatus", "0" );
+  if ($poll > 0) {
+    InternalTimer(gettimeofday() + $poll, "PCA301_Poll_statusRequest", "Poll_statusRequest:$name");
+  }
+  else {
+    delete($hash->{pollStatus});
+    Log3 $hash, 3, "$name: PCA301_Poll_statusRequest: stop polling from statusRequest";
+  }
+}
+
+sub
+PCA301_SendRetry
+{
+	my ($hash) = @_;
+	my  $retrycmd = $hash->{cmd};
+	
+	RemoveInternalTimer($hash);
+	
+	if (!defined($hash->{cmdRetry})) {
+		$hash->{cmdRetry} = 1;
+	} else {
+		$hash->{cmdRetry}++;
+	}
+	Log3 $hash, 3, $hash->{NAME} . ": PCA301_SendRetry: $hash->{cmdRetry} cmd=$cmdtxt{$retrycmd}";
+	PCA301_Send( $hash, substr($retrycmd, 0, 1),  substr($retrycmd, 1));
+	if ($hash->{cmdRetry} < PCA301_send_max_cmdRetry) {
+		InternalTimer(gettimeofday()+PCA301_send_OnOffStatus_timeout, "PCA301_SendRetry", $hash, 0);
+	}
+	else {
+		delete ($hash->{cmdRetry});
+	}
+}
+
+sub
+PCA301_Parse
 {
   my ($hash, $msg) = @_;
   my $name = $hash->{NAME};
@@ -220,17 +296,20 @@ PCA301_Parse($$)
 
   $rhash->{PCA301_lastRcv} = TimeNow();
 
-  if( $rhash->{channel} ne $channel ) {
-    Log3 $rname, 3, "PCA301 $rname, channel changed from $rhash->{channel} to $channel";
+  #if( $rhash->{channel} ne $channel ) {
+  #  Log3 $rname, 3, "PCA301 $rname, channel changed from $rhash->{channel} to $channel";
 
-    $rhash->{channel} = $channel;
-    $rhash->{DEF} = "$rhash->{addr} $rhash->{channel}";
-    CommandSave(undef,undef) if( AttrVal( "autocreate", "autosave", 1 ) );
-  }
+  #  $rhash->{channel} = $channel;
+  #  $rhash->{DEF} = "$rhash->{addr} $rhash->{channel}";
+  #  CommandSave(undef,undef) if( AttrVal( "autocreate", "autosave", 1 ) );
+  #}
 
   my $readonly = AttrVal($rname, "readonly", "0" );
   my $state = "";
 
+  
+  RemoveInternalTimer($rhash);
+  delete ($rhash->{cmdRetry});
   if( $cmd eq 0x04 ) {
     $state = $data==0x00?"off":"on";
     my $power = ($bytes[6]*256 + $bytes[7]) / 10.0;
@@ -238,16 +317,35 @@ PCA301_Parse($$)
     my $state = $state; $state = $power if( $readonly );
     my $off_level = AttrVal($rname, "offLevel", 0);
     $state = "off" if( $readonly && $off_level && $power <= $off_level );
+    Log3 $rhash, 4, "$rname: PCA301 Parse: $rname, state=$state, power=$power";
     readingsBeginUpdate($rhash);
     readingsBulkUpdate($rhash, "power", $power) if( $power != ReadingsVal($rname,"power",0) );
     readingsBulkUpdate($rhash, "consumption", $consumption) if( $consumption != ReadingsVal($rname,"consumption",0) );
     readingsBulkUpdate($rhash, "state", $state) if( $state ne ReadingsVal($rname,"state","") );
     readingsEndUpdate($rhash,1);
-  } elsif( $cmd eq 0x05 ) {
-    $state = $data==0x00?"off":"on";
-
-    readingsSingleUpdate($rhash, "state", $state, 1)
+  } elsif( $cmd eq 0x05 ) {		# on / off
+    delete($rhash->{cmdRetry});
+    if (defined($rhash->{cmd})) {
+      delete($rhash->{cmd});
+      $state = $data==0x00?"off":"on";
+    } else {
+      $state = $data==0x00?"on":"off";
+    }
+    readingsSingleUpdate($rhash, "state", $state, 1);
   }
+    if ($state eq "on" && !defined($rhash->{pollStatus})) {
+      my $poll = AttrVal($rname, "pollStatus", "0" );
+      if ($poll > 0) {
+        Log3 $rhash, 3, "$rname: PCA301 Parse: start polling from statusRequest all $poll seconds";
+        $rhash->{pollStatus} = $poll;
+        InternalTimer(gettimeofday() + $poll, "PCA301_Poll_statusRequest", "Poll_statusRequest:$rname");
+      }
+    }
+    elsif ($state eq "off") {
+       delete($rhash->{pollStatus});
+       RemoveInternalTimer("Poll_statusRequest:$rname");
+       Log3 $hash, 3, "$rname: PCA301 Parse: stop polling from statusRequest";
+    }
 
   if( AttrVal($rname, "forceOn", 0 ) == 1
       && $state eq "off"  ) {
@@ -257,27 +355,78 @@ PCA301_Parse($$)
 
   return @list;
 }
+
 sub
-PCA301_Send($$@)
+SIGNALduino_CalculateCRC16
 {
-  my ($hash, $cmd, $data) = @_;
-
-  $hash->{PCA301_lastSend} = TimeNow();
-
-  my $msg = sprintf( "%i,%i,%i,%i,%i,%i,255,255,255,255s", hex($hash->{channel}),
-                                                           $cmd,
-                                                           hex(substr($hash->{addr},0,2)), hex(substr($hash->{addr},2,2)), hex(substr($hash->{addr},4,2)),
-                                                           $data );
-
-  IOWrite( $hash, $msg );
+	my ($dmsg,$poly) = @_;
+	my $len = length($dmsg);
+	my $i;
+	my $byte;
+	my $crc16 = 0;
+	
+	for ($i=0; $i<$len; $i+=2) {
+		$byte = hex(substr($dmsg,$i,2)) * 0x100;	# in 16 Bit wandeln
+		for (0..7)	# 8 Bits pro Byte
+		{
+			#if (($byte & 0x8000) ^ ($crc16 & 0x8000)) {
+			if (($byte ^ $crc16) & 0x8000) {
+				$crc16 <<= 1;
+				$crc16 ^= $poly;
+			} else {
+				$crc16 <<= 1;
+			}
+			$crc16 &= 0xFFFF;
+			$byte <<= 1;
+			$byte &= 0xFFFF;
+		}
+	}
+	return $crc16;
 }
 
 sub
-PCA301_Attr(@)
+PCA301_Send
+{
+  my ($hash, $cmd, $data) = @_;
+  my $io = $hash->{IODev};
+  my $msg;
+
+  $hash->{PCA301_lastSend} = TimeNow();
+
+  if ($io->{TYPE} ne "SIGNALduino") {
+     $msg = sprintf( "%i,%i,%i,%i,%i,%i,255,255,255,255s", hex($hash->{channel}),
+                                                           $cmd,
+                                                           hex(substr($hash->{addr},0,2)), hex(substr($hash->{addr},2,2)), hex(substr($hash->{addr},4,2)),
+                                                           $data );
+    IOWrite( $hash, $msg );
+  }		# SIGNALduino
+  else {
+    my $cmdText = "";
+    my $cmddata = $cmd . $data;
+    if (exists($cmdtxt{$cmddata})) {
+       $cmdText = $cmdtxt{$cmddata};
+    }
+    $msg = sprintf("%02X%02X%s%02X", hex($hash->{channel}), $cmd, $hash->{addr}, $data);
+    $msg .= "FFFFFFFF";
+    my $crc16 = sprintf("%04X", SIGNALduino_CalculateCRC16($msg, 0x8005));
+    $msg = "SN;N=3;D=$msg$crc16" . "AAAAAA;";
+    Log3 $hash, 3, $hash->{NAME} . ": PCA301 send $cmdText: msg=$msg";
+    
+    IOWrite($hash, "raw", $msg);
+  }
+}
+
+sub
+PCA301_Attr
 {
   my ($cmd, $name, $attrName, $attrVal) = @_;
-
-  return undef;
+  
+  if ($cmd eq "set") {
+    if ($attrName eq "pollStatus" && $attrVal < 30 && $attrVal > 0) {
+      return "value too small (min 30)";
+    }
+  }
+  return;
 }
 
 1;
@@ -318,6 +467,8 @@ PCA301_Attr(@)
       Reset consumption counters</li>
     <li>statusRequest<br>
       Request device status update.</li>
+    <li>pairing<br>
+      todo</li>
     <li><a href="#setExtensions"> set extensions</a> are supported.</li>
   </ul><br>
 
@@ -339,6 +490,8 @@ PCA301_Attr(@)
   <a name="PCA301_Attr"></a>
   <b>Attributes</b>
   <ul>
+    <li>pollStatus<br>
+      if greater than 0 then send statusRequest all this value seconds.</li>
     <li>forceOn<br>
       try to switch on the device whenever an off status is received.</li>
     <li>offLevel<br>
